@@ -30,6 +30,11 @@ public class Knjiga : ISerializable
         CsvParser.EnsureValidIdentifier(Isbn, nameof(Isbn));
         CsvParser.EnsureValidIdentifier(PublisherCode, nameof(PublisherCode));
 
+        if (!double.IsFinite(Price))
+        {
+            throw new InvalidOperationException($"{nameof(Price)} must be a finite number, but it is {Price.ToString(CultureInfo.InvariantCulture)}.");
+        }
+
         string[] csvValues =
         {
             Isbn,

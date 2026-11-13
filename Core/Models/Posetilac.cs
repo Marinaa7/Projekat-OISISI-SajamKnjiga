@@ -6,7 +6,7 @@ namespace BookFair.Core.Models;
 
 public class Posetilac : ISerializable
 {
-    private const int FieldCount = 12;
+    private const int FieldCount = 10;
     private const double MinAverageRating = 0;
     private const double MaxAverageRating = 5;
 
@@ -20,8 +20,10 @@ public class Posetilac : ISerializable
     public int MembershipYear { get; set; }
     public MembershipStatus Status { get; set; } = MembershipStatus.R;
     public double AverageRating { get; set; }
-    public List<int> PurchaseIds { get; set; } = new List<int>();
-    public List<string> WishlistBookIsbns { get; set; } = new List<string>();
+
+    public Adresa? Address { get; set; }
+    public List<Kupovina> Purchases { get; set; } = new List<Kupovina>();
+    public List<Knjiga> Wishlist { get; set; } = new List<Knjiga>();
 
     public Posetilac()
     {
@@ -47,9 +49,7 @@ public class Posetilac : ISerializable
             Email,
             MembershipYear.ToString(CultureInfo.InvariantCulture),
             FormatStatus(Status),
-            AverageRating.ToString(CultureInfo.InvariantCulture),
-            string.Join(CsvParser.ListSeparator, PurchaseIds.Select(id => id.ToString(CultureInfo.InvariantCulture))),
-            CsvParser.FormatIdentifierList(WishlistBookIsbns, nameof(WishlistBookIsbns))
+            AverageRating.ToString(CultureInfo.InvariantCulture)
         };
         return csvValues;
     }
@@ -71,8 +71,6 @@ public class Posetilac : ISerializable
         int membershipYear = CsvParser.ParseInt(values[7], nameof(MembershipYear));
         MembershipStatus status = ParseStatus(values[8]);
         double averageRating = CsvParser.ParseDouble(values[9], nameof(AverageRating));
-        List<int> purchaseIds = CsvParser.ParseIntList(values[10], nameof(PurchaseIds));
-        List<string> wishlistBookIsbns = CsvParser.ParseIdentifierList(values[11], nameof(WishlistBookIsbns));
 
         if (!IsValidAverageRating(averageRating))
         {
@@ -89,8 +87,6 @@ public class Posetilac : ISerializable
         MembershipYear = membershipYear;
         Status = status;
         AverageRating = averageRating;
-        PurchaseIds = purchaseIds;
-        WishlistBookIsbns = wishlistBookIsbns;
     }
 
     private static bool IsValidAverageRating(double averageRating)

@@ -4,9 +4,8 @@ namespace BookFair.Core.Utils;
 
 public static class CsvParser
 {
-    public const char ListSeparator = ';';
     public const string DateFormat = "yyyy-MM-dd";
-    private static readonly char[] ForbiddenIdentifierCharacters = { ListSeparator, '|', '\r', '\n' };
+    private static readonly char[] ForbiddenIdentifierCharacters = { '|', '\r', '\n' };
 
     public static bool IsValidIdentifier(string? value)
     {
@@ -60,50 +59,6 @@ public static class CsvParser
         }
 
         return result;
-    }
-
-    public static List<int> ParseIntList(string value, string fieldName)
-    {
-        List<int> result = new List<int>();
-
-        if (value.Length == 0)
-        {
-            return result;
-        }
-
-        foreach (string element in value.Split(ListSeparator))
-        {
-            result.Add(ParseInt(element, fieldName));
-        }
-
-        return result;
-    }
-
-    public static List<string> ParseIdentifierList(string value, string fieldName)
-    {
-        List<string> result = new List<string>();
-
-        if (value.Length == 0)
-        {
-            return result;
-        }
-
-        foreach (string element in value.Split(ListSeparator))
-        {
-            result.Add(ParseIdentifier(element, fieldName));
-        }
-
-        return result;
-    }
-
-    public static string FormatIdentifierList(List<string> identifiers, string fieldName)
-    {
-        foreach (string identifier in identifiers)
-        {
-            EnsureValidIdentifier(identifier, fieldName);
-        }
-
-        return string.Join(ListSeparator, identifiers);
     }
 
     public static void EnsureNoNullValues(string[] values, string recordName)

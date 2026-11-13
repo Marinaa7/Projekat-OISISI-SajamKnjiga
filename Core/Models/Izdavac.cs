@@ -6,13 +6,15 @@ namespace BookFair.Core.Models;
 
 public class Izdavac : ISerializable
 {
-    private const int FieldCount = 5;
+    private const int FieldCount = 3;
 
     public string Code { get; set; } = string.Empty;
     public string Name { get; set; } = string.Empty;
     public int HeadAuthorId { get; set; }
-    public List<int> AuthorIds { get; set; } = new List<int>();
-    public List<string> BookIsbns { get; set; } = new List<string>();
+
+    public Autor? HeadAuthor { get; set; }
+    public List<Autor> Authors { get; set; } = new List<Autor>();
+    public List<Knjiga> Books { get; set; } = new List<Knjiga>();
 
     public Izdavac()
     {
@@ -26,9 +28,7 @@ public class Izdavac : ISerializable
         {
             Code,
             Name,
-            HeadAuthorId.ToString(CultureInfo.InvariantCulture),
-            string.Join(CsvParser.ListSeparator, AuthorIds.Select(id => id.ToString(CultureInfo.InvariantCulture))),
-            CsvParser.FormatIdentifierList(BookIsbns, nameof(BookIsbns))
+            HeadAuthorId.ToString(CultureInfo.InvariantCulture)
         };
         return csvValues;
     }
@@ -46,13 +46,9 @@ public class Izdavac : ISerializable
 
         string code = CsvParser.ParseIdentifier(values[0], nameof(Code));
         int headAuthorId = CsvParser.ParseInt(values[2], nameof(HeadAuthorId));
-        List<int> authorIds = CsvParser.ParseIntList(values[3], nameof(AuthorIds));
-        List<string> bookIsbns = CsvParser.ParseIdentifierList(values[4], nameof(BookIsbns));
 
         Code = code;
         Name = values[1];
         HeadAuthorId = headAuthorId;
-        AuthorIds = authorIds;
-        BookIsbns = bookIsbns;
     }
 }

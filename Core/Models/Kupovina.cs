@@ -17,6 +17,9 @@ public class Kupovina : ISerializable
     public int Rating { get; set; } = MinRating;
     public string Comment { get; set; } = string.Empty;
 
+    public Posetilac? Visitor { get; set; }
+    public Knjiga? Book { get; set; }
+
     public Kupovina()
     {
     }

@@ -19,10 +19,11 @@ class Program
             AutorDAO autorDao = new AutorDAO();
             KnjigaDAO knjigaDao = new KnjigaDAO();
             AdresaDAO adresaDao = new AdresaDAO();
+            ListaZeljaDAO listaZeljaDao = new ListaZeljaDAO();
 
             mainView = new MainView(
-                new PosetilacView(posetilacDao, kupovinaDao, adresaDao),
-                new KupovinaView(kupovinaDao, posetilacDao, knjigaDao),
+                new PosetilacView(posetilacDao, kupovinaDao, adresaDao, knjigaDao, listaZeljaDao),
+                new KupovinaView(kupovinaDao, posetilacDao, knjigaDao, listaZeljaDao),
                 new IzdavacView(izdavacDao, autorDao, knjigaDao));
         }
         catch (Exception ex)

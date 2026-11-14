@@ -9,12 +9,16 @@ public class PosetilacView
     private readonly PosetilacDAO _posetilacDao;
     private readonly KupovinaDAO _kupovinaDao;
     private readonly AdresaDAO _adresaDao;
+    private readonly KnjigaDAO _knjigaDao;
+    private readonly ListaZeljaDAO _listaZeljaDao;
 
-    public PosetilacView(PosetilacDAO posetilacDao, KupovinaDAO kupovinaDao, AdresaDAO adresaDao)
+    public PosetilacView(PosetilacDAO posetilacDao, KupovinaDAO kupovinaDao, AdresaDAO adresaDao, KnjigaDAO knjigaDao, ListaZeljaDAO listaZeljaDao)
     {
         _posetilacDao = posetilacDao;
         _kupovinaDao = kupovinaDao;
         _adresaDao = adresaDao;
+        _knjigaDao = knjigaDao;
+        _listaZeljaDao = listaZeljaDao;
     }
 
     public void Run()
@@ -48,6 +52,8 @@ public class PosetilacView
         Console.WriteLine("3 - Dodavanje posjetioca");
         Console.WriteLine("4 - Izmjena posjetioca");
         Console.WriteLine("5 - Brisanje posjetioca");
+        Console.WriteLine("6 - Dodavanje knjige na listu želja");
+        Console.WriteLine("7 - Uklanjanje knjige sa liste želja");
         Console.WriteLine("0 - Nazad");
     }
 
@@ -69,6 +75,12 @@ public class PosetilacView
                 break;
             case "5":
                 Remove();
+                break;
+            case "6":
+                AddToWishlist();
+                break;
+            case "7":
+                RemoveFromWishlist();
                 break;
             default:
                 ConsoleOutput.ShowError("Nepostojeća opcija.");
@@ -107,7 +119,8 @@ public class PosetilacView
             return;
         }
 
-        int purchaseCount = _kupovinaDao.GetAll().Count(k => k.VisitorCardNumber == posetilac.CardNumber);
+        List<Kupovina> kupovine = PurchasesOf(posetilac.CardNumber);
+        List<string> wishlist = _listaZeljaDao.GetBookIsbns(posetilac.CardNumber);
 
         Console.WriteLine($"Broj članske karte:  {posetilac.CardNumber}");
         Console.WriteLine($"Ime i prezime:       {posetilac.FirstName} {posetilac.LastName}");
@@ -118,7 +131,18 @@ public class PosetilacView
         Console.WriteLine($"Godina članstva:     {posetilac.MembershipYear}");
         Console.WriteLine($"Status:              {FormatStatus(posetilac.Status)}");
         Console.WriteLine($"Prosječna ocjena:    {posetilac.AverageRating:0.00}");
-        Console.WriteLine($"Broj kupovina:       {purchaseCount}");
+
+        Console.WriteLine($"Kupljene knjige ({kupovine.Count}):");
+        foreach (Kupovina kupovina in kupovine)
+        {
+            Console.WriteLine($"  {kupovina.BookIsbn} - {BookTitle(kupovina.BookIsbn)} (ocjena {kupovina.Rating})");
+        }
+
+        Console.WriteLine($"Lista želja ({wishlist.Count}):");
+        foreach (string isbn in wishlist)
+        {
+            Console.WriteLine($"  {isbn} - {BookTitle(isbn)}");
+        }
     }
 
     private void Add()
@@ -157,10 +181,11 @@ public class PosetilacView
             return;
         }
 
-        List<Kupovina> kupovine = _kupovinaDao.GetAll().Where(k => k.VisitorCardNumber == posetilac.CardNumber).ToList();
-        string question = kupovine.Count == 0
+        List<Kupovina> kupovine = PurchasesOf(posetilac.CardNumber);
+        int wishlistCount = _listaZeljaDao.GetBookIsbns(posetilac.CardNumber).Count;
+        string question = kupovine.Count == 0 && wishlistCount == 0
             ? $"Da li ste sigurni da želite da obrišete posjetioca {posetilac.FirstName} {posetilac.LastName}?"
-            : $"Posjetilac {posetilac.FirstName} {posetilac.LastName} ima kupovina: {kupovine.Count}. One će takođe biti obrisane. Da li ste sigurni?";
+            : $"Posjetilac {posetilac.FirstName} {posetilac.LastName} ima kupovina: {kupovine.Count} i knjiga na listi želja: {wishlistCount}. I one će biti obrisane. Da li ste sigurni?";
 
         if (!ConsoleInput.Confirm(question))
         {
@@ -173,8 +198,85 @@ public class PosetilacView
             _kupovinaDao.Remove(kupovina.Id);
         }
 
+        _listaZeljaDao.RemoveByVisitor(posetilac.CardNumber);
         _posetilacDao.Remove(posetilac.CardNumber);
         ConsoleOutput.ShowSuccess("Posjetilac je uspješno obrisan.");
+    }
+
+    private void AddToWishlist()
+    {
+        Posetilac? posetilac = FindByCardNumber();
+        if (posetilac == null)
+        {
+            return;
+        }
+
+        if (_knjigaDao.GetAll().Count == 0)
+        {
+            ConsoleOutput.ShowError("U sistemu nema knjiga. Prvo dodajte knjigu u meniju Knjige.");
+            return;
+        }
+
+        List<Knjiga> available = _knjigaDao.GetAll().Where(k => CanAddToWishlist(posetilac.CardNumber, k.Isbn)).ToList();
+        if (available.Count == 0)
+        {
+            ConsoleOutput.ShowInfo("Nema knjiga koje se mogu dodati: posjetilac je sve knjige već kupio ili ih ima na listi želja.");
+            return;
+        }
+
+        Console.WriteLine("Knjige koje se mogu dodati (nisu kupljene i nisu već na listi želja):");
+        foreach (Knjiga knjiga in available)
+        {
+            Console.WriteLine($"  {knjiga.Isbn} - {knjiga.Title}");
+        }
+
+        string isbn = ConsoleInput.ReadText("ISBN knjige");
+        if (!available.Exists(k => k.Isbn == isbn))
+        {
+            ConsoleOutput.ShowError($"Knjiga sa ISBN-om '{isbn}' nije na spisku knjiga koje se mogu dodati.");
+            return;
+        }
+
+        _listaZeljaDao.Add(posetilac.CardNumber, isbn);
+        ConsoleOutput.ShowSuccess($"Knjiga '{BookTitle(isbn)}' je dodata na listu želja.");
+    }
+
+    private void RemoveFromWishlist()
+    {
+        Posetilac? posetilac = FindByCardNumber();
+        if (posetilac == null)
+        {
+            return;
+        }
+
+        List<string> wishlist = _listaZeljaDao.GetBookIsbns(posetilac.CardNumber);
+        if (wishlist.Count == 0)
+        {
+            ConsoleOutput.ShowInfo("Lista želja ovog posjetioca je prazna.");
+            return;
+        }
+
+        Console.WriteLine("Lista želja:");
+        foreach (string wishlistIsbn in wishlist)
+        {
+            Console.WriteLine($"  {wishlistIsbn} - {BookTitle(wishlistIsbn)}");
+        }
+
+        string isbn = ConsoleInput.ReadText("ISBN knjige");
+        if (!wishlist.Contains(isbn))
+        {
+            ConsoleOutput.ShowError($"Knjiga sa ISBN-om '{isbn}' nije na listi želja ovog posjetioca.");
+            return;
+        }
+
+        if (!ConsoleInput.Confirm($"Da li ste sigurni da želite da uklonite knjigu '{BookTitle(isbn)}' sa liste želja?"))
+        {
+            ConsoleOutput.ShowInfo("Uklanjanje je otkazano.");
+            return;
+        }
+
+        _listaZeljaDao.Remove(posetilac.CardNumber, isbn);
+        ConsoleOutput.ShowSuccess("Knjiga je uklonjena sa liste želja.");
     }
 
     private Posetilac ReadPosetilac(string cardNumber, Posetilac? current)
@@ -231,6 +333,22 @@ public class PosetilacView
         }
 
         return posetilac;
+    }
+
+    private bool CanAddToWishlist(string cardNumber, string isbn)
+    {
+        bool purchased = _kupovinaDao.GetAll().Exists(k => k.VisitorCardNumber == cardNumber && k.BookIsbn == isbn);
+        return !purchased && !_listaZeljaDao.Contains(cardNumber, isbn);
+    }
+
+    private List<Kupovina> PurchasesOf(string cardNumber)
+    {
+        return _kupovinaDao.GetAll().Where(k => k.VisitorCardNumber == cardNumber).ToList();
+    }
+
+    private string BookTitle(string isbn)
+    {
+        return _knjigaDao.GetByIsbn(isbn)?.Title ?? "-";
     }
 
     private static string FormatStatus(MembershipStatus status)

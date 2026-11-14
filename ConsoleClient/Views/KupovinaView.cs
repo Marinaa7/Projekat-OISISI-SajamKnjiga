@@ -9,12 +9,14 @@ public class KupovinaView
     private readonly KupovinaDAO _kupovinaDao;
     private readonly PosetilacDAO _posetilacDao;
     private readonly KnjigaDAO _knjigaDao;
+    private readonly ListaZeljaDAO _listaZeljaDao;
 
-    public KupovinaView(KupovinaDAO kupovinaDao, PosetilacDAO posetilacDao, KnjigaDAO knjigaDao)
+    public KupovinaView(KupovinaDAO kupovinaDao, PosetilacDAO posetilacDao, KnjigaDAO knjigaDao, ListaZeljaDAO listaZeljaDao)
     {
         _kupovinaDao = kupovinaDao;
         _posetilacDao = posetilacDao;
         _knjigaDao = knjigaDao;
+        _listaZeljaDao = listaZeljaDao;
     }
 
     public void Run()
@@ -149,6 +151,11 @@ public class KupovinaView
         _kupovinaDao.Add(kupovina);
         UpdateAverageRating(posetilac.CardNumber);
         ConsoleOutput.ShowSuccess($"Kupovina je uspješno dodata (ID {kupovina.Id}).");
+
+        if (_listaZeljaDao.Remove(posetilac.CardNumber, knjiga.Isbn) != null)
+        {
+            ConsoleOutput.ShowInfo("Knjiga je uklonjena sa liste želja posjetioca, jer je sada kupljena.");
+        }
     }
 
     private void Update()

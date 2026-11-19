@@ -119,9 +119,10 @@ public class PosetilacView
             return;
         }
 
-        List<Kupovina> kupovine = PurchasesOf(posetilac.CardNumber);
-        List<string> wishlist = _listaZeljaDao.GetBookIsbns(posetilac.CardNumber);
+        List<Kupovina> kupovine = PurchasesOf(posetilac.Id);
+        List<Knjiga> wishlist = WishlistOf(posetilac.Id);
 
+        Console.WriteLine($"ID:                  {posetilac.Id}");
         Console.WriteLine($"Broj članske karte:  {posetilac.CardNumber}");
         Console.WriteLine($"Ime i prezime:       {posetilac.FirstName} {posetilac.LastName}");
         Console.WriteLine($"Datum rođenja:       {ConsoleOutput.FormatDate(posetilac.DateOfBirth)}");
@@ -135,13 +136,13 @@ public class PosetilacView
         Console.WriteLine($"Kupljene knjige ({kupovine.Count}):");
         foreach (Kupovina kupovina in kupovine)
         {
-            Console.WriteLine($"  {kupovina.BookIsbn} - {BookTitle(kupovina.BookIsbn)} (ocjena {kupovina.Rating})");
+            Console.WriteLine($"  {BookText(kupovina.BookId)} (ocjena {kupovina.Rating})");
         }
 
         Console.WriteLine($"Lista želja ({wishlist.Count}):");
-        foreach (string isbn in wishlist)
+        foreach (Knjiga knjiga in wishlist)
         {
-            Console.WriteLine($"  {isbn} - {BookTitle(isbn)}");
+            Console.WriteLine($"  {knjiga.Isbn} - {knjiga.Title}");
         }
     }
 
@@ -181,8 +182,8 @@ public class PosetilacView
             return;
         }
 
-        List<Kupovina> kupovine = PurchasesOf(posetilac.CardNumber);
-        int wishlistCount = _listaZeljaDao.GetBookIsbns(posetilac.CardNumber).Count;
+        List<Kupovina> kupovine = PurchasesOf(posetilac.Id);
+        int wishlistCount = _listaZeljaDao.GetBookIds(posetilac.Id).Count;
         string question = kupovine.Count == 0 && wishlistCount == 0
             ? $"Da li ste sigurni da želite da obrišete posjetioca {posetilac.FirstName} {posetilac.LastName}?"
             : $"Posjetilac {posetilac.FirstName} {posetilac.LastName} ima kupovina: {kupovine.Count} i knjiga na listi želja: {wishlistCount}. I one će biti obrisane. Da li ste sigurni?";
@@ -198,8 +199,8 @@ public class PosetilacView
             _kupovinaDao.Remove(kupovina.Id);
         }
 
-        _listaZeljaDao.RemoveByVisitor(posetilac.CardNumber);
-        _posetilacDao.Remove(posetilac.CardNumber);
+        _listaZeljaDao.RemoveByVisitor(posetilac.Id);
+        _posetilacDao.Remove(posetilac.Id);
         ConsoleOutput.ShowSuccess("Posjetilac je uspješno obrisan.");
     }
 
@@ -217,7 +218,7 @@ public class PosetilacView
             return;
         }
 
-        List<Knjiga> available = _knjigaDao.GetAll().Where(k => CanAddToWishlist(posetilac.CardNumber, k.Isbn)).ToList();
+        List<Knjiga> available = _knjigaDao.GetAll().Where(k => CanAddToWishlist(posetilac.Id, k.Id)).ToList();
         if (available.Count == 0)
         {
             ConsoleOutput.ShowInfo("Nema knjiga koje se mogu dodati: posjetilac je sve knjige već kupio ili ih ima na listi želja.");
@@ -231,14 +232,15 @@ public class PosetilacView
         }
 
         string isbn = ConsoleInput.ReadText("ISBN knjige");
-        if (!available.Exists(k => k.Isbn == isbn))
+        Knjiga? chosen = available.Find(k => k.Isbn == isbn);
+        if (chosen == null)
         {
             ConsoleOutput.ShowError($"Knjiga sa ISBN-om '{isbn}' nije na spisku knjiga koje se mogu dodati.");
             return;
         }
 
-        _listaZeljaDao.Add(posetilac.CardNumber, isbn);
-        ConsoleOutput.ShowSuccess($"Knjiga '{BookTitle(isbn)}' je dodata na listu želja.");
+        _listaZeljaDao.Add(posetilac.Id, chosen.Id);
+        ConsoleOutput.ShowSuccess($"Knjiga '{chosen.Title}' je dodata na listu želja.");
     }
 
     private void RemoveFromWishlist()
@@ -249,7 +251,7 @@ public class PosetilacView
             return;
         }
 
-        List<string> wishlist = _listaZeljaDao.GetBookIsbns(posetilac.CardNumber);
+        List<Knjiga> wishlist = WishlistOf(posetilac.Id);
         if (wishlist.Count == 0)
         {
             ConsoleOutput.ShowInfo("Lista želja ovog posjetioca je prazna.");
@@ -257,25 +259,26 @@ public class PosetilacView
         }
 
         Console.WriteLine("Lista želja:");
-        foreach (string wishlistIsbn in wishlist)
+        foreach (Knjiga knjiga in wishlist)
         {
-            Console.WriteLine($"  {wishlistIsbn} - {BookTitle(wishlistIsbn)}");
+            Console.WriteLine($"  {knjiga.Isbn} - {knjiga.Title}");
         }
 
         string isbn = ConsoleInput.ReadText("ISBN knjige");
-        if (!wishlist.Contains(isbn))
+        Knjiga? chosen = wishlist.Find(k => k.Isbn == isbn);
+        if (chosen == null)
         {
             ConsoleOutput.ShowError($"Knjiga sa ISBN-om '{isbn}' nije na listi želja ovog posjetioca.");
             return;
         }
 
-        if (!ConsoleInput.Confirm($"Da li ste sigurni da želite da uklonite knjigu '{BookTitle(isbn)}' sa liste želja?"))
+        if (!ConsoleInput.Confirm($"Da li ste sigurni da želite da uklonite knjigu '{chosen.Title}' sa liste želja?"))
         {
             ConsoleOutput.ShowInfo("Uklanjanje je otkazano.");
             return;
         }
 
-        _listaZeljaDao.Remove(posetilac.CardNumber, isbn);
+        _listaZeljaDao.Remove(posetilac.Id, chosen.Id);
         ConsoleOutput.ShowSuccess("Knjiga je uklonjena sa liste želja.");
     }
 
@@ -283,6 +286,7 @@ public class PosetilacView
     {
         return new Posetilac
         {
+            Id = current?.Id ?? 0,
             CardNumber = cardNumber,
             FirstName = ConsoleInput.ReadText("Ime", true, current?.FirstName),
             LastName = ConsoleInput.ReadText("Prezime", true, current?.LastName),
@@ -335,20 +339,27 @@ public class PosetilacView
         return posetilac;
     }
 
-    private bool CanAddToWishlist(string cardNumber, string isbn)
+    private bool CanAddToWishlist(int visitorId, int bookId)
     {
-        bool purchased = _kupovinaDao.GetAll().Exists(k => k.VisitorCardNumber == cardNumber && k.BookIsbn == isbn);
-        return !purchased && !_listaZeljaDao.Contains(cardNumber, isbn);
+        bool purchased = _kupovinaDao.GetAll().Exists(k => k.VisitorId == visitorId && k.BookId == bookId);
+        return !purchased && !_listaZeljaDao.Contains(visitorId, bookId);
     }
 
-    private List<Kupovina> PurchasesOf(string cardNumber)
+    private List<Kupovina> PurchasesOf(int visitorId)
     {
-        return _kupovinaDao.GetAll().Where(k => k.VisitorCardNumber == cardNumber).ToList();
+        return _kupovinaDao.GetAll().Where(k => k.VisitorId == visitorId).ToList();
     }
 
-    private string BookTitle(string isbn)
+    private List<Knjiga> WishlistOf(int visitorId)
     {
-        return _knjigaDao.GetByIsbn(isbn)?.Title ?? "-";
+        List<int> bookIds = _listaZeljaDao.GetBookIds(visitorId);
+        return _knjigaDao.GetAll().Where(k => bookIds.Contains(k.Id)).ToList();
+    }
+
+    private string BookText(int bookId)
+    {
+        Knjiga? knjiga = _knjigaDao.GetById(bookId);
+        return knjiga == null ? "-" : $"{knjiga.Isbn} - {knjiga.Title}";
     }
 
     private static string FormatStatus(MembershipStatus status)

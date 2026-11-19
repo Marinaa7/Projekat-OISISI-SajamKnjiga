@@ -51,8 +51,8 @@ public class KupovinaDAO
             return null;
         }
 
-        oldKupovina.VisitorCardNumber = kupovina.VisitorCardNumber;
-        oldKupovina.BookIsbn = kupovina.BookIsbn;
+        oldKupovina.VisitorId = kupovina.VisitorId;
+        oldKupovina.BookId = kupovina.BookId;
         oldKupovina.PurchaseDate = kupovina.PurchaseDate;
         oldKupovina.Rating = kupovina.Rating;
         oldKupovina.Comment = kupovina.Comment;

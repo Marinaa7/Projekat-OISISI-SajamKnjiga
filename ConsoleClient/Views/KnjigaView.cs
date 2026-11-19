@@ -113,7 +113,7 @@ public class KnjigaView
                               $"{knjiga.Price,10:0.00} | " +
                               $"{knjiga.PublicationYear,6} | " +
                               $"{ConsoleOutput.Fit(knjiga.Genre, 14)} | " +
-                              $"{ConsoleOutput.Fit(PublisherName(knjiga.PublisherCode), 18)}");
+                              $"{ConsoleOutput.Fit(_izdavacDao.GetById(knjiga.PublisherId)?.Name, 18)}");
         }
 
         Console.WriteLine($"Ukupno knjiga: {knjige.Count}");
@@ -127,26 +127,28 @@ public class KnjigaView
             return;
         }
 
-        List<Autor> autori = AuthorsOf(knjiga.Isbn);
-        List<Kupovina> kupovine = PurchasesOf(knjiga.Isbn);
-        List<string> wishedBy = _listaZeljaDao.GetVisitorCardNumbers(knjiga.Isbn);
+        List<Autor> autori = AuthorsOf(knjiga.Id);
+        List<Kupovina> kupovine = PurchasesOf(knjiga.Id);
+        List<int> wishedBy = _listaZeljaDao.GetVisitorIds(knjiga.Id);
+        Izdavac? izdavac = _izdavacDao.GetById(knjiga.PublisherId);
 
+        Console.WriteLine($"ID:              {knjiga.Id}");
         Console.WriteLine($"ISBN:            {knjiga.Isbn}");
         Console.WriteLine($"Naziv:           {knjiga.Title}");
         Console.WriteLine($"Žanr:            {knjiga.Genre}");
         Console.WriteLine($"Godina izdanja:  {knjiga.PublicationYear}");
         Console.WriteLine($"Cijena:          {knjiga.Price:0.00}");
         Console.WriteLine($"Broj strana:     {knjiga.PageCount}");
-        Console.WriteLine($"Izdavač:         {knjiga.PublisherCode} ({PublisherName(knjiga.PublisherCode)})");
+        Console.WriteLine($"Izdavač:         {(izdavac is null ? "-" : $"{izdavac.Code} ({izdavac.Name})")}");
 
         Console.WriteLine($"Autori ({autori.Count}):");
         autori.ForEach(a => Console.WriteLine($"  {a.Id,3} - {a.FirstName} {a.LastName}"));
 
         Console.WriteLine($"Kupili ({kupovine.Count}):");
-        kupovine.ForEach(k => Console.WriteLine($"  {k.VisitorCardNumber} - {VisitorName(k.VisitorCardNumber)}"));
+        kupovine.ForEach(k => Console.WriteLine($"  {VisitorText(k.VisitorId)}"));
 
         Console.WriteLine($"Na listi želja ({wishedBy.Count}):");
-        wishedBy.ForEach(cardNumber => Console.WriteLine($"  {cardNumber} - {VisitorName(cardNumber)}"));
+        wishedBy.ForEach(visitorId => Console.WriteLine($"  {VisitorText(visitorId)}"));
     }
 
     private void Add()
@@ -167,7 +169,7 @@ public class KnjigaView
         List<int> authorIds = ReadAuthorIds(null);
 
         _knjigaDao.Add(knjiga);
-        _knjigaAutorDao.SetAuthors(isbn, authorIds);
+        _knjigaAutorDao.SetAuthors(knjiga.Id, authorIds);
         ConsoleOutput.ShowSuccess("Knjiga je uspješno dodata.");
     }
 
@@ -186,10 +188,10 @@ public class KnjigaView
 
         ConsoleOutput.ShowInfo("Pritisnite Enter da zadržite trenutnu vrijednost (prikazana je u zagradi).");
         Knjiga updated = ReadKnjiga(existing.Isbn, existing);
-        List<int> authorIds = ReadAuthorIds(_knjigaAutorDao.GetAuthorIds(existing.Isbn));
+        List<int> authorIds = ReadAuthorIds(_knjigaAutorDao.GetAuthorIds(existing.Id));
 
         _knjigaDao.Update(updated);
-        _knjigaAutorDao.SetAuthors(existing.Isbn, authorIds);
+        _knjigaAutorDao.SetAuthors(existing.Id, authorIds);
         ConsoleOutput.ShowSuccess("Podaci o knjizi su uspješno izmijenjeni.");
     }
 
@@ -201,14 +203,14 @@ public class KnjigaView
             return;
         }
 
-        int purchaseCount = PurchasesOf(knjiga.Isbn).Count;
+        int purchaseCount = PurchasesOf(knjiga.Id).Count;
         if (purchaseCount > 0)
         {
             ConsoleOutput.ShowError($"Knjiga '{knjiga.Title}' ima kupovina: {purchaseCount}. Ne može se obrisati dok se te kupovine ne obrišu u meniju Kupovine.");
             return;
         }
 
-        int wishlistCount = _listaZeljaDao.GetVisitorCardNumbers(knjiga.Isbn).Count;
+        int wishlistCount = _listaZeljaDao.GetVisitorIds(knjiga.Id).Count;
         string question = wishlistCount == 0
             ? $"Da li ste sigurni da želite da obrišete knjigu '{knjiga.Title}'?"
             : $"Knjiga '{knjiga.Title}' je na listi želja kod posjetilaca: {wishlistCount} i biće uklonjena sa tih lista. Da li ste sigurni?";
@@ -219,9 +221,9 @@ public class KnjigaView
             return;
         }
 
-        _listaZeljaDao.RemoveByBook(knjiga.Isbn);
-        _knjigaAutorDao.RemoveByBook(knjiga.Isbn);
-        _knjigaDao.Remove(knjiga.Isbn);
+        _listaZeljaDao.RemoveByBook(knjiga.Id);
+        _knjigaAutorDao.RemoveByBook(knjiga.Id);
+        _knjigaDao.Remove(knjiga.Id);
         ConsoleOutput.ShowSuccess("Knjiga je uspješno obrisana.");
     }
 
@@ -246,13 +248,14 @@ public class KnjigaView
     {
         return new Knjiga
         {
+            Id = current?.Id ?? 0,
             Isbn = isbn,
             Title = ConsoleInput.ReadText("Naziv", true, current?.Title),
             Genre = ConsoleInput.ReadText("Žanr", true, current?.Genre),
             PublicationYear = ConsoleInput.ReadInt("Godina izdanja", 1, DateTime.Today.Year, current?.PublicationYear),
             Price = ConsoleInput.ReadDouble("Cijena", MinPrice, MaxPrice, current?.Price),
             PageCount = ConsoleInput.ReadInt("Broj strana", 1, MaxPageCount, current?.PageCount),
-            PublisherCode = ChoosePublisher(current?.PublisherCode)
+            PublisherId = ChoosePublisher(current?.PublisherId)
         };
     }
 
@@ -270,17 +273,19 @@ public class KnjigaView
         }
     }
 
-    private string ChoosePublisher(string? current)
+    private int ChoosePublisher(int? currentId)
     {
         Console.WriteLine("Izdavači:");
         _izdavacDao.GetAll().ForEach(i => Console.WriteLine($"  {i.Code} - {i.Name}"));
 
+        string? currentCode = currentId is null ? null : _izdavacDao.GetById(currentId.Value)?.Code;
         while (true)
         {
-            string code = ConsoleInput.ReadText("Šifra izdavača", true, current);
-            if (_izdavacDao.GetByCode(code) is not null)
+            string code = ConsoleInput.ReadText("Šifra izdavača", true, currentCode);
+            Izdavac? izdavac = _izdavacDao.GetByCode(code);
+            if (izdavac is not null)
             {
-                return code;
+                return izdavac.Id;
             }
 
             ConsoleOutput.ShowError($"Izdavač sa šifrom '{code}' ne postoji.");
@@ -343,21 +348,18 @@ public class KnjigaView
         return knjiga;
     }
 
-    private List<Autor> AuthorsOf(string isbn)
+    private List<Autor> AuthorsOf(int bookId)
     {
-        List<int> authorIds = _knjigaAutorDao.GetAuthorIds(isbn);
+        List<int> authorIds = _knjigaAutorDao.GetAuthorIds(bookId);
         return _autorDao.GetAll().Where(a => authorIds.Contains(a.Id)).ToList();
     }
 
-    private List<Kupovina> PurchasesOf(string isbn) =>
-        _kupovinaDao.GetAll().Where(k => k.BookIsbn == isbn).ToList();
+    private List<Kupovina> PurchasesOf(int bookId) =>
+        _kupovinaDao.GetAll().Where(k => k.BookId == bookId).ToList();
 
-    private string PublisherName(string code) =>
-        _izdavacDao.GetByCode(code)?.Name ?? "-";
-
-    private string VisitorName(string cardNumber)
+    private string VisitorText(int visitorId)
     {
-        Posetilac? posetilac = _posetilacDao.GetByCardNumber(cardNumber);
-        return posetilac is null ? "-" : $"{posetilac.FirstName} {posetilac.LastName}";
+        Posetilac? posetilac = _posetilacDao.GetById(visitorId);
+        return posetilac is null ? "-" : $"{posetilac.CardNumber} - {posetilac.FirstName} {posetilac.LastName}";
     }
 }

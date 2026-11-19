@@ -20,32 +20,32 @@ public class ListaZeljaDAO
         return _listeZelja;
     }
 
-    public List<string> GetBookIsbns(string cardNumber)
+    public List<int> GetBookIds(int visitorId)
     {
-        return _listeZelja.Where(lz => lz.VisitorCardNumber == cardNumber).Select(lz => lz.BookIsbn).ToList();
+        return _listeZelja.Where(lz => lz.VisitorId == visitorId).Select(lz => lz.BookId).ToList();
     }
 
-    public List<string> GetVisitorCardNumbers(string isbn)
+    public List<int> GetVisitorIds(int bookId)
     {
-        return _listeZelja.Where(lz => lz.BookIsbn == isbn).Select(lz => lz.VisitorCardNumber).ToList();
+        return _listeZelja.Where(lz => lz.BookId == bookId).Select(lz => lz.VisitorId).ToList();
     }
 
-    public bool Contains(string cardNumber, string isbn)
+    public bool Contains(int visitorId, int bookId)
     {
-        return _listeZelja.Exists(lz => lz.VisitorCardNumber == cardNumber && lz.BookIsbn == isbn);
+        return _listeZelja.Exists(lz => lz.VisitorId == visitorId && lz.BookId == bookId);
     }
 
-    public ListaZelja? Add(string cardNumber, string isbn)
+    public ListaZelja? Add(int visitorId, int bookId)
     {
-        if (Contains(cardNumber, isbn))
+        if (Contains(visitorId, bookId))
         {
             return null;
         }
 
         ListaZelja listaZelja = new ListaZelja
         {
-            VisitorCardNumber = cardNumber,
-            BookIsbn = isbn
+            VisitorId = visitorId,
+            BookId = bookId
         };
 
         _listeZelja.Add(listaZelja);
@@ -53,9 +53,9 @@ public class ListaZeljaDAO
         return listaZelja;
     }
 
-    public ListaZelja? Remove(string cardNumber, string isbn)
+    public ListaZelja? Remove(int visitorId, int bookId)
     {
-        ListaZelja? listaZelja = _listeZelja.Find(lz => lz.VisitorCardNumber == cardNumber && lz.BookIsbn == isbn);
+        ListaZelja? listaZelja = _listeZelja.Find(lz => lz.VisitorId == visitorId && lz.BookId == bookId);
         if (listaZelja == null)
         {
             return null;
@@ -66,15 +66,15 @@ public class ListaZeljaDAO
         return listaZelja;
     }
 
-    public void RemoveByVisitor(string cardNumber)
+    public void RemoveByVisitor(int visitorId)
     {
-        _listeZelja.RemoveAll(lz => lz.VisitorCardNumber == cardNumber);
+        _listeZelja.RemoveAll(lz => lz.VisitorId == visitorId);
         _storage.Save(_listeZelja);
     }
 
-    public void RemoveByBook(string isbn)
+    public void RemoveByBook(int bookId)
     {
-        _listeZelja.RemoveAll(lz => lz.BookIsbn == isbn);
+        _listeZelja.RemoveAll(lz => lz.BookId == bookId);
         _storage.Save(_listeZelja);
     }
 }

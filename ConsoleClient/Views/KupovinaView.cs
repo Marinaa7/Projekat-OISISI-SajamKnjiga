@@ -90,11 +90,14 @@ public class KupovinaView
         ConsoleOutput.ShowTableHeader($"{"ID",4} | {"Br. karte",-12} | {"Posjetilac",-20} | {"ISBN",-17} | {"Knjiga",-22} | {"Datum",-11} | {"Ocjena",6}");
         foreach (Kupovina kupovina in kupovine)
         {
+            Posetilac? posetilac = _posetilacDao.GetById(kupovina.VisitorId);
+            Knjiga? knjiga = _knjigaDao.GetById(kupovina.BookId);
+
             Console.WriteLine($"{kupovina.Id,4} | " +
-                              $"{ConsoleOutput.Fit(kupovina.VisitorCardNumber, 12)} | " +
-                              $"{ConsoleOutput.Fit(VisitorName(kupovina.VisitorCardNumber), 20)} | " +
-                              $"{ConsoleOutput.Fit(kupovina.BookIsbn, 17)} | " +
-                              $"{ConsoleOutput.Fit(BookTitle(kupovina.BookIsbn), 22)} | " +
+                              $"{ConsoleOutput.Fit(posetilac?.CardNumber, 12)} | " +
+                              $"{ConsoleOutput.Fit(VisitorName(kupovina.VisitorId), 20)} | " +
+                              $"{ConsoleOutput.Fit(knjiga?.Isbn, 17)} | " +
+                              $"{ConsoleOutput.Fit(knjiga?.Title, 22)} | " +
                               $"{ConsoleOutput.FormatDate(kupovina.PurchaseDate),-11} | " +
                               $"{kupovina.Rating,6}");
         }
@@ -110,9 +113,12 @@ public class KupovinaView
             return;
         }
 
+        Posetilac? posetilac = _posetilacDao.GetById(kupovina.VisitorId);
+        Knjiga? knjiga = _knjigaDao.GetById(kupovina.BookId);
+
         Console.WriteLine($"ID kupovine:     {kupovina.Id}");
-        Console.WriteLine($"Posjetilac:      {kupovina.VisitorCardNumber} ({VisitorName(kupovina.VisitorCardNumber)})");
-        Console.WriteLine($"Knjiga:          {kupovina.BookIsbn} ({BookTitle(kupovina.BookIsbn)})");
+        Console.WriteLine($"Posjetilac:      {posetilac?.CardNumber ?? "-"} ({VisitorName(kupovina.VisitorId)})");
+        Console.WriteLine($"Knjiga:          {knjiga?.Isbn ?? "-"} ({knjiga?.Title ?? "-"})");
         Console.WriteLine($"Datum kupovine:  {ConsoleOutput.FormatDate(kupovina.PurchaseDate)}");
         Console.WriteLine($"Ocjena:          {kupovina.Rating}");
         Console.WriteLine($"Komentar:        {ConsoleOutput.OrDash(kupovina.Comment)}");
@@ -132,7 +138,7 @@ public class KupovinaView
             return;
         }
 
-        bool alreadyBought = _kupovinaDao.GetAll().Any(k => k.VisitorCardNumber == posetilac.CardNumber && k.BookIsbn == knjiga.Isbn);
+        bool alreadyBought = _kupovinaDao.GetAll().Any(k => k.VisitorId == posetilac.Id && k.BookId == knjiga.Id);
         if (alreadyBought)
         {
             ConsoleOutput.ShowError("Ovaj posjetilac je već kupio ovu knjigu.");
@@ -141,18 +147,18 @@ public class KupovinaView
 
         Kupovina kupovina = new Kupovina
         {
-            VisitorCardNumber = posetilac.CardNumber,
-            BookIsbn = knjiga.Isbn,
+            VisitorId = posetilac.Id,
+            BookId = knjiga.Id,
             PurchaseDate = ConsoleInput.ReadDate("Datum kupovine", null, false),
             Rating = ConsoleInput.ReadInt("Ocjena (1-5)", 1, 5),
             Comment = ConsoleInput.ReadText("Komentar", false)
         };
 
         _kupovinaDao.Add(kupovina);
-        UpdateAverageRating(posetilac.CardNumber);
+        UpdateAverageRating(posetilac.Id);
         ConsoleOutput.ShowSuccess($"Kupovina je uspješno dodata (ID {kupovina.Id}).");
 
-        if (_listaZeljaDao.Remove(posetilac.CardNumber, knjiga.Isbn) != null)
+        if (_listaZeljaDao.Remove(posetilac.Id, knjiga.Id) != null)
         {
             ConsoleOutput.ShowInfo("Knjiga je uklonjena sa liste želja posjetioca, jer je sada kupljena.");
         }
@@ -170,15 +176,15 @@ public class KupovinaView
         Kupovina updated = new Kupovina
         {
             Id = existing.Id,
-            VisitorCardNumber = existing.VisitorCardNumber,
-            BookIsbn = existing.BookIsbn,
+            VisitorId = existing.VisitorId,
+            BookId = existing.BookId,
             PurchaseDate = ConsoleInput.ReadDate("Datum kupovine", existing.PurchaseDate, false),
             Rating = ConsoleInput.ReadInt("Ocjena (1-5)", 1, 5, existing.Rating),
             Comment = ConsoleInput.ReadText("Komentar", false, existing.Comment)
         };
 
         _kupovinaDao.Update(updated);
-        UpdateAverageRating(updated.VisitorCardNumber);
+        UpdateAverageRating(updated.VisitorId);
         ConsoleOutput.ShowSuccess("Kupovina je uspješno izmijenjena.");
     }
 
@@ -190,7 +196,7 @@ public class KupovinaView
             return;
         }
 
-        string question = $"Da li ste sigurni da želite da obrišete kupovinu {kupovina.Id} ({VisitorName(kupovina.VisitorCardNumber)} - {BookTitle(kupovina.BookIsbn)})?";
+        string question = $"Da li ste sigurni da želite da obrišete kupovinu {kupovina.Id} ({VisitorName(kupovina.VisitorId)} - {BookTitle(kupovina.BookId)})?";
         if (!ConsoleInput.Confirm(question))
         {
             ConsoleOutput.ShowInfo("Brisanje je otkazano.");
@@ -198,7 +204,7 @@ public class KupovinaView
         }
 
         _kupovinaDao.Remove(kupovina.Id);
-        UpdateAverageRating(kupovina.VisitorCardNumber);
+        UpdateAverageRating(kupovina.VisitorId);
         ConsoleOutput.ShowSuccess("Kupovina je uspješno obrisana.");
     }
 
@@ -264,27 +270,27 @@ public class KupovinaView
         return kupovina;
     }
 
-    private void UpdateAverageRating(string cardNumber)
+    private void UpdateAverageRating(int visitorId)
     {
-        Posetilac? posetilac = _posetilacDao.GetByCardNumber(cardNumber);
+        Posetilac? posetilac = _posetilacDao.GetById(visitorId);
         if (posetilac == null)
         {
             return;
         }
 
-        List<Kupovina> kupovine = _kupovinaDao.GetAll().Where(k => k.VisitorCardNumber == cardNumber).ToList();
+        List<Kupovina> kupovine = _kupovinaDao.GetAll().Where(k => k.VisitorId == visitorId).ToList();
         posetilac.AverageRating = kupovine.Count == 0 ? 0 : kupovine.Average(k => k.Rating);
         _posetilacDao.Update(posetilac);
     }
 
-    private string VisitorName(string cardNumber)
+    private string VisitorName(int visitorId)
     {
-        Posetilac? posetilac = _posetilacDao.GetByCardNumber(cardNumber);
+        Posetilac? posetilac = _posetilacDao.GetById(visitorId);
         return posetilac == null ? "-" : $"{posetilac.FirstName} {posetilac.LastName}";
     }
 
-    private string BookTitle(string isbn)
+    private string BookTitle(int bookId)
     {
-        return _knjigaDao.GetByIsbn(isbn)?.Title ?? "-";
+        return _knjigaDao.GetById(bookId)?.Title ?? "-";
     }
 }

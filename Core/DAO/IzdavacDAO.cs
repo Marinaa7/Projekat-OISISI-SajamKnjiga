@@ -15,9 +15,24 @@ public class IzdavacDAO
         _izdavaci = _storage.Load();
     }
 
+    private int GenerateId()
+    {
+        if (_izdavaci.Count == 0)
+        {
+            return 1;
+        }
+
+        return _izdavaci.Max(i => i.Id) + 1;
+    }
+
     public List<Izdavac> GetAll()
     {
         return _izdavaci;
+    }
+
+    public Izdavac? GetById(int id)
+    {
+        return _izdavaci.Find(i => i.Id == id);
     }
 
     public Izdavac? GetByCode(string code)
@@ -32,6 +47,7 @@ public class IzdavacDAO
             return null;
         }
 
+        izdavac.Id = GenerateId();
         _izdavaci.Add(izdavac);
         _storage.Save(_izdavaci);
         return izdavac;
@@ -39,7 +55,7 @@ public class IzdavacDAO
 
     public Izdavac? Update(Izdavac izdavac)
     {
-        Izdavac? oldIzdavac = GetByCode(izdavac.Code);
+        Izdavac? oldIzdavac = GetById(izdavac.Id);
         if (oldIzdavac == null)
         {
             return null;
@@ -52,9 +68,9 @@ public class IzdavacDAO
         return oldIzdavac;
     }
 
-    public Izdavac? Remove(string code)
+    public Izdavac? Remove(int id)
     {
-        Izdavac? izdavac = GetByCode(code);
+        Izdavac? izdavac = GetById(id);
         if (izdavac == null)
         {
             return null;

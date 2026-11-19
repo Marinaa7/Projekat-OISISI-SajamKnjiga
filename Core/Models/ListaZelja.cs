@@ -1,4 +1,5 @@
-﻿using BookFair.Core.Serialization;
+﻿using System.Globalization;
+using BookFair.Core.Serialization;
 using BookFair.Core.Utils;
 
 namespace BookFair.Core.Models;
@@ -7,8 +8,8 @@ public class ListaZelja : ISerializable
 {
     private const int FieldCount = 2;
 
-    public string VisitorCardNumber { get; set; } = string.Empty;
-    public string BookIsbn { get; set; } = string.Empty;
+    public int VisitorId { get; set; }
+    public int BookId { get; set; }
 
     public ListaZelja()
     {
@@ -16,13 +17,10 @@ public class ListaZelja : ISerializable
 
     public string[] ToCSV()
     {
-        CsvParser.EnsureValidIdentifier(VisitorCardNumber, nameof(VisitorCardNumber));
-        CsvParser.EnsureValidIdentifier(BookIsbn, nameof(BookIsbn));
-
         string[] csvValues =
         {
-            VisitorCardNumber,
-            BookIsbn
+            VisitorId.ToString(CultureInfo.InvariantCulture),
+            BookId.ToString(CultureInfo.InvariantCulture)
         };
         return csvValues;
     }
@@ -38,10 +36,10 @@ public class ListaZelja : ISerializable
 
         CsvParser.EnsureNoNullValues(values, "wishlist");
 
-        string visitorCardNumber = CsvParser.ParseIdentifier(values[0], nameof(VisitorCardNumber));
-        string bookIsbn = CsvParser.ParseIdentifier(values[1], nameof(BookIsbn));
+        int visitorId = CsvParser.ParseInt(values[0], nameof(VisitorId));
+        int bookId = CsvParser.ParseInt(values[1], nameof(BookId));
 
-        VisitorCardNumber = visitorCardNumber;
-        BookIsbn = bookIsbn;
+        VisitorId = visitorId;
+        BookId = bookId;
     }
 }

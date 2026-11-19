@@ -17,27 +17,27 @@ public class KnjigaAutorDAO
 
     public List<KnjigaAutor> GetAll() => _knjigeAutori;
 
-    public List<int> GetAuthorIds(string isbn) =>
-        _knjigeAutori.Where(ka => ka.BookIsbn == isbn).Select(ka => ka.AuthorId).ToList();
+    public List<int> GetAuthorIds(int bookId) =>
+        _knjigeAutori.Where(ka => ka.BookId == bookId).Select(ka => ka.AuthorId).ToList();
 
-    public List<string> GetBookIsbns(int authorId) =>
-        _knjigeAutori.Where(ka => ka.AuthorId == authorId).Select(ka => ka.BookIsbn).ToList();
+    public List<int> GetBookIds(int authorId) =>
+        _knjigeAutori.Where(ka => ka.AuthorId == authorId).Select(ka => ka.BookId).ToList();
 
-    public void SetAuthors(string isbn, List<int> authorIds)
+    public void SetAuthors(int bookId, List<int> authorIds)
     {
-        _knjigeAutori.RemoveAll(ka => ka.BookIsbn == isbn);
+        _knjigeAutori.RemoveAll(ka => ka.BookId == bookId);
 
         foreach (int authorId in authorIds.Distinct())
         {
-            _knjigeAutori.Add(new KnjigaAutor { BookIsbn = isbn, AuthorId = authorId });
+            _knjigeAutori.Add(new KnjigaAutor { BookId = bookId, AuthorId = authorId });
         }
 
         _storage.Save(_knjigeAutori);
     }
 
-    public void RemoveByBook(string isbn)
+    public void RemoveByBook(int bookId)
     {
-        _knjigeAutori.RemoveAll(ka => ka.BookIsbn == isbn);
+        _knjigeAutori.RemoveAll(ka => ka.BookId == bookId);
         _storage.Save(_knjigeAutori);
     }
 }

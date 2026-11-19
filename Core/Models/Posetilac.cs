@@ -6,10 +6,11 @@ namespace BookFair.Core.Models;
 
 public class Posetilac : ISerializable
 {
-    private const int FieldCount = 10;
+    private const int FieldCount = 11;
     private const double MinAverageRating = 0;
     private const double MaxAverageRating = 5;
 
+    public int Id { get; set; }
     public string CardNumber { get; set; } = string.Empty;
     public string FirstName { get; set; } = string.Empty;
     public string LastName { get; set; } = string.Empty;
@@ -40,6 +41,7 @@ public class Posetilac : ISerializable
 
         string[] csvValues =
         {
+            Id.ToString(CultureInfo.InvariantCulture),
             CardNumber,
             FirstName,
             LastName,
@@ -65,25 +67,27 @@ public class Posetilac : ISerializable
 
         CsvParser.EnsureNoNullValues(values, "visitor");
 
-        string cardNumber = CsvParser.ParseIdentifier(values[0], nameof(CardNumber));
-        DateOnly dateOfBirth = CsvParser.ParseDate(values[3], nameof(DateOfBirth));
-        int addressId = CsvParser.ParseInt(values[4], nameof(AddressId));
-        int membershipYear = CsvParser.ParseInt(values[7], nameof(MembershipYear));
-        MembershipStatus status = ParseStatus(values[8]);
-        double averageRating = CsvParser.ParseDouble(values[9], nameof(AverageRating));
+        int id = CsvParser.ParseInt(values[0], nameof(Id));
+        string cardNumber = CsvParser.ParseIdentifier(values[1], nameof(CardNumber));
+        DateOnly dateOfBirth = CsvParser.ParseDate(values[4], nameof(DateOfBirth));
+        int addressId = CsvParser.ParseInt(values[5], nameof(AddressId));
+        int membershipYear = CsvParser.ParseInt(values[8], nameof(MembershipYear));
+        MembershipStatus status = ParseStatus(values[9]);
+        double averageRating = CsvParser.ParseDouble(values[10], nameof(AverageRating));
 
         if (!IsValidAverageRating(averageRating))
         {
-            throw new FormatException($"{nameof(AverageRating)} must be between {MinAverageRating} and {MaxAverageRating}, but it is '{values[9]}'.");
+            throw new FormatException($"{nameof(AverageRating)} must be between {MinAverageRating} and {MaxAverageRating}, but it is '{values[10]}'.");
         }
 
+        Id = id;
         CardNumber = cardNumber;
-        FirstName = values[1];
-        LastName = values[2];
+        FirstName = values[2];
+        LastName = values[3];
         DateOfBirth = dateOfBirth;
         AddressId = addressId;
-        Phone = values[5];
-        Email = values[6];
+        Phone = values[6];
+        Email = values[7];
         MembershipYear = membershipYear;
         Status = status;
         AverageRating = averageRating;

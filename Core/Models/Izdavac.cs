@@ -6,8 +6,9 @@ namespace BookFair.Core.Models;
 
 public class Izdavac : ISerializable
 {
-    private const int FieldCount = 3;
+    private const int FieldCount = 4;
 
+    public int Id { get; set; }
     public string Code { get; set; } = string.Empty;
     public string Name { get; set; } = string.Empty;
     public int HeadAuthorId { get; set; }
@@ -26,6 +27,7 @@ public class Izdavac : ISerializable
 
         string[] csvValues =
         {
+            Id.ToString(CultureInfo.InvariantCulture),
             Code,
             Name,
             HeadAuthorId.ToString(CultureInfo.InvariantCulture)
@@ -44,11 +46,13 @@ public class Izdavac : ISerializable
 
         CsvParser.EnsureNoNullValues(values, "publisher");
 
-        string code = CsvParser.ParseIdentifier(values[0], nameof(Code));
-        int headAuthorId = CsvParser.ParseInt(values[2], nameof(HeadAuthorId));
+        int id = CsvParser.ParseInt(values[0], nameof(Id));
+        string code = CsvParser.ParseIdentifier(values[1], nameof(Code));
+        int headAuthorId = CsvParser.ParseInt(values[3], nameof(HeadAuthorId));
 
+        Id = id;
         Code = code;
-        Name = values[1];
+        Name = values[2];
         HeadAuthorId = headAuthorId;
     }
 }

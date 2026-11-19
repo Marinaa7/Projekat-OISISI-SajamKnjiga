@@ -17,6 +17,8 @@ public class KnjigaDAO
 
     public List<Knjiga> GetAll() => _knjige;
 
+    public Knjiga? GetById(int id) => _knjige.FirstOrDefault(k => k.Id == id);
+
     public Knjiga? GetByIsbn(string isbn) => _knjige.FirstOrDefault(k => k.Isbn == isbn);
 
     public Knjiga? Add(Knjiga knjiga)
@@ -26,6 +28,7 @@ public class KnjigaDAO
             return null;
         }
 
+        knjiga.Id = NextId();
         _knjige.Add(knjiga);
         _storage.Save(_knjige);
         return knjiga;
@@ -33,7 +36,7 @@ public class KnjigaDAO
 
     public Knjiga? Update(Knjiga knjiga)
     {
-        Knjiga? existing = GetByIsbn(knjiga.Isbn);
+        Knjiga? existing = GetById(knjiga.Id);
         if (existing is null)
         {
             return null;
@@ -44,15 +47,15 @@ public class KnjigaDAO
         existing.PublicationYear = knjiga.PublicationYear;
         existing.Price = knjiga.Price;
         existing.PageCount = knjiga.PageCount;
-        existing.PublisherCode = knjiga.PublisherCode;
+        existing.PublisherId = knjiga.PublisherId;
 
         _storage.Save(_knjige);
         return existing;
     }
 
-    public Knjiga? Remove(string isbn)
+    public Knjiga? Remove(int id)
     {
-        Knjiga? existing = GetByIsbn(isbn);
+        Knjiga? existing = GetById(id);
         if (existing is null)
         {
             return null;
@@ -62,4 +65,6 @@ public class KnjigaDAO
         _storage.Save(_knjige);
         return existing;
     }
+
+    private int NextId() => _knjige.Count == 0 ? 1 : _knjige.Max(k => k.Id) + 1;
 }

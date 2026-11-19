@@ -6,15 +6,16 @@ namespace BookFair.Core.Models;
 
 public class Knjiga : ISerializable
 {
-    private const int FieldCount = 7;
+    private const int FieldCount = 8;
 
+    public int Id { get; set; }
     public string Isbn { get; set; } = string.Empty;
     public string Title { get; set; } = string.Empty;
     public string Genre { get; set; } = string.Empty;
     public int PublicationYear { get; set; }
     public double Price { get; set; }
     public int PageCount { get; set; }
-    public string PublisherCode { get; set; } = string.Empty;
+    public int PublisherId { get; set; }
 
     public Izdavac? Publisher { get; set; }
     public List<Autor> Authors { get; set; } = new List<Autor>();
@@ -28,7 +29,6 @@ public class Knjiga : ISerializable
     public string[] ToCSV()
     {
         CsvParser.EnsureValidIdentifier(Isbn, nameof(Isbn));
-        CsvParser.EnsureValidIdentifier(PublisherCode, nameof(PublisherCode));
 
         if (!double.IsFinite(Price))
         {
@@ -37,13 +37,14 @@ public class Knjiga : ISerializable
 
         string[] csvValues =
         {
+            Id.ToString(CultureInfo.InvariantCulture),
             Isbn,
             Title,
             Genre,
             PublicationYear.ToString(CultureInfo.InvariantCulture),
             Price.ToString(CultureInfo.InvariantCulture),
             PageCount.ToString(CultureInfo.InvariantCulture),
-            PublisherCode
+            PublisherId.ToString(CultureInfo.InvariantCulture)
         };
         return csvValues;
     }
@@ -59,18 +60,20 @@ public class Knjiga : ISerializable
 
         CsvParser.EnsureNoNullValues(values, "book");
 
-        string isbn = CsvParser.ParseIdentifier(values[0], nameof(Isbn));
-        int publicationYear = CsvParser.ParseInt(values[3], nameof(PublicationYear));
-        double price = CsvParser.ParseDouble(values[4], nameof(Price));
-        int pageCount = CsvParser.ParseInt(values[5], nameof(PageCount));
-        string publisherCode = CsvParser.ParseIdentifier(values[6], nameof(PublisherCode));
+        int id = CsvParser.ParseInt(values[0], nameof(Id));
+        string isbn = CsvParser.ParseIdentifier(values[1], nameof(Isbn));
+        int publicationYear = CsvParser.ParseInt(values[4], nameof(PublicationYear));
+        double price = CsvParser.ParseDouble(values[5], nameof(Price));
+        int pageCount = CsvParser.ParseInt(values[6], nameof(PageCount));
+        int publisherId = CsvParser.ParseInt(values[7], nameof(PublisherId));
 
+        Id = id;
         Isbn = isbn;
-        Title = values[1];
-        Genre = values[2];
+        Title = values[2];
+        Genre = values[3];
         PublicationYear = publicationYear;
         Price = price;
         PageCount = pageCount;
-        PublisherCode = publisherCode;
+        PublisherId = publisherId;
     }
 }

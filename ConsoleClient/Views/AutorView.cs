@@ -278,8 +278,8 @@ public class AutorView
 
     private List<Knjiga> BooksOf(int authorId)
     {
-        List<string> isbns = _knjigaAutorDao.GetBookIsbns(authorId);
-        return _knjigaDao.GetAll().Where(k => isbns.Contains(k.Isbn)).ToList();
+        List<int> bookIds = _knjigaAutorDao.GetBookIds(authorId);
+        return _knjigaDao.GetAll().Where(k => bookIds.Contains(k.Id)).ToList();
     }
 
     private static string PublisherNames(List<Izdavac> izdavaci) =>

@@ -93,7 +93,7 @@ public class IzdavacView
             Console.WriteLine($"{ConsoleOutput.Fit(izdavac.Code, 8)} | " +
                               $"{ConsoleOutput.Fit(izdavac.Name, 28)} | " +
                               $"{ConsoleOutput.Fit(AuthorName(izdavac.HeadAuthorId), 26)} | " +
-                              $"{BooksOf(izdavac.Code).Count,10}");
+                              $"{BooksOf(izdavac.Id).Count,10}");
         }
 
         Console.WriteLine($"Ukupno izdavača: {izdavaci.Count}");
@@ -110,11 +110,12 @@ public class IzdavacView
         Autor? sef = _autorDao.GetById(izdavac.HeadAuthorId);
         string headText = sef == null ? "-" : $"{sef.FirstName} {sef.LastName} (godine iskustva: {sef.YearsOfExperience})";
 
+        Console.WriteLine($"ID:             {izdavac.Id}");
         Console.WriteLine($"Šifra:          {izdavac.Code}");
         Console.WriteLine($"Naziv:          {izdavac.Name}");
         Console.WriteLine($"Šef izdavača:   {headText}");
 
-        List<Knjiga> knjige = BooksOf(izdavac.Code);
+        List<Knjiga> knjige = BooksOf(izdavac.Id);
         Console.WriteLine($"Knjige ({knjige.Count}):");
         foreach (Knjiga knjiga in knjige)
         {
@@ -153,6 +154,7 @@ public class IzdavacView
         ConsoleOutput.ShowInfo("Pritisnite Enter da zadržite trenutnu vrijednost (prikazana je u zagradi).");
         Izdavac updated = new Izdavac
         {
+            Id = existing.Id,
             Code = existing.Code,
             Name = ConsoleInput.ReadText("Naziv", true, existing.Name),
             HeadAuthorId = ReadHeadAuthorId(existing.HeadAuthorId)
@@ -170,7 +172,7 @@ public class IzdavacView
             return;
         }
 
-        int bookCount = BooksOf(izdavac.Code).Count;
+        int bookCount = BooksOf(izdavac.Id).Count;
         if (bookCount > 0)
         {
             ConsoleOutput.ShowError($"Izdavač '{izdavac.Name}' ima knjiga: {bookCount}. Ne može se obrisati dok se te knjige ne obrišu ili ne prebace drugom izdavaču.");
@@ -183,7 +185,7 @@ public class IzdavacView
             return;
         }
 
-        _izdavacDao.Remove(izdavac.Code);
+        _izdavacDao.Remove(izdavac.Id);
         ConsoleOutput.ShowSuccess("Izdavač je uspješno obrisan.");
     }
 
@@ -238,9 +240,9 @@ public class IzdavacView
         return izdavac;
     }
 
-    private List<Knjiga> BooksOf(string code)
+    private List<Knjiga> BooksOf(int publisherId)
     {
-        return _knjigaDao.GetAll().Where(k => k.PublisherCode == code).ToList();
+        return _knjigaDao.GetAll().Where(k => k.PublisherId == publisherId).ToList();
     }
 
     private string AuthorName(int authorId)

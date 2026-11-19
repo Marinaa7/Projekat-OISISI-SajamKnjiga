@@ -15,9 +15,24 @@ public class PosetilacDAO
         _posetioci = _storage.Load();
     }
 
+    private int GenerateId()
+    {
+        if (_posetioci.Count == 0)
+        {
+            return 1;
+        }
+
+        return _posetioci.Max(p => p.Id) + 1;
+    }
+
     public List<Posetilac> GetAll()
     {
         return _posetioci;
+    }
+
+    public Posetilac? GetById(int id)
+    {
+        return _posetioci.Find(p => p.Id == id);
     }
 
     public Posetilac? GetByCardNumber(string cardNumber)
@@ -32,6 +47,7 @@ public class PosetilacDAO
             return null;
         }
 
+        posetilac.Id = GenerateId();
         _posetioci.Add(posetilac);
         _storage.Save(_posetioci);
         return posetilac;
@@ -39,7 +55,7 @@ public class PosetilacDAO
 
     public Posetilac? Update(Posetilac posetilac)
     {
-        Posetilac? oldPosetilac = GetByCardNumber(posetilac.CardNumber);
+        Posetilac? oldPosetilac = GetById(posetilac.Id);
         if (oldPosetilac == null)
         {
             return null;
@@ -59,9 +75,9 @@ public class PosetilacDAO
         return oldPosetilac;
     }
 
-    public Posetilac? Remove(string cardNumber)
+    public Posetilac? Remove(int id)
     {
-        Posetilac? posetilac = GetByCardNumber(cardNumber);
+        Posetilac? posetilac = GetById(id);
         if (posetilac == null)
         {
             return null;
